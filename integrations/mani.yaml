@@ -1,0 +1,10 @@
+tasks:
+  repo-check:
+    desc: Check local work, all branches and stashes without network access
+    cmd: '"$HOME/.local/bin/repo-health" inspect'
+    target:
+      all: true
+    spec:
+      output: table
+      parallel: true
+      forks: 4

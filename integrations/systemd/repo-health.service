@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Mani repositories for forgotten local work (offline)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/repo-health scan
+Environment="PATH=%h/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/bin:/usr/bin:/bin"
+Environment="MANI_CONFIG=%h/.config/mani/main.yaml"
+UMask=0077
+TimeoutStartSec=150
+KillMode=control-group
+Nice=10
