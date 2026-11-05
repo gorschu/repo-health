@@ -66,7 +66,7 @@ Examples are included under [`integrations/`](integrations/):
 
 - A systemd user service and timer that scan about every three minutes.
 - A `mani run repo-check` task for fresh, detailed local checks.
-- A muted Starship module that only reads the cache.
+- A Starship module that only reads the cache.
 
 Use `repo-health summary` in a Fastfetch command module. Prompt rendering does
 not scan repositories. Personal paths, scheduling and styling belong in your
