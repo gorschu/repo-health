@@ -214,18 +214,19 @@ func TestCachedDisplay(t *testing.T) {
 	if err := writeJSON(filepath.Join(dir, "status.json"), data); err != nil {
 		t.Fatal(err)
 	}
-	now := nowSeconds()
-	wantPrompt := " Local work: 1 repo · 1 stash · 1 branch without a push target   mani run repo-check\n"
+	now := data.CheckedAt + 146
+	wantPrompt := " Local work: 1 repo · 1 stash · 1 branch without a push target · checked 2m ago   mani run repo-check\n"
 	if got := display(readReport(dir), "prompt", "", now); got != wantPrompt {
 		t.Fatalf("got %q; want %q", got, wantPrompt)
 	}
-	for _, mode := range []string{"summary", "show"} {
-		got := display(readReport(dir), mode, "", now)
-		if !strings.Contains(got, "Local work: 1 repo · 1 stash") || !strings.Contains(got, "Local report: 0s ago") {
-			t.Fatal(got)
-		}
-		if mode == "show" && (!strings.Contains(got, f.repo) || !strings.Contains(got, "local-only:")) {
-			t.Fatal(got)
+	wantSummary := "1 repo · 1 stash · 1 branch without a push target · checked 2m ago\n"
+	if got := display(readReport(dir), "summary", "", now); got != wantSummary {
+		t.Fatalf("summary must stay on one line: got %q; want %q", got, wantSummary)
+	}
+	got := display(readReport(dir), "show", "", now)
+	for _, want := range []string{"Local work: 1 repo · 1 stash", "checked 2m ago", f.repo, "local-only:"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("detailed report missing %q: %s", want, got)
 		}
 	}
 	if !strings.Contains(display(data, "prompt", "error", nowSeconds()), "1 stash") {
@@ -237,6 +238,52 @@ func TestCachedDisplay(t *testing.T) {
 	info, err := os.Stat(filepath.Join(dir, "status.json"))
 	if err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("cache must be private: %v", err)
+	}
+}
+
+func TestCheckAge(t *testing.T) {
+	const checkedAt = 100000.0
+	for _, tc := range []struct {
+		age  float64
+		want string
+	}{
+		{-1, "check time in future"},
+		{0, "checked 0s ago"},
+		{59.9, "checked 59s ago"},
+		{60, "checked 1m ago"},
+		{146, "checked 2m ago"},
+		{3599, "checked 59m ago"},
+		{3600, "checked 1h ago"},
+		{86399, "checked 23h ago"},
+		{86400, "checked 1d ago"},
+	} {
+		if got := checkAge(checkedAt, checkedAt+tc.age); got != tc.want {
+			t.Errorf("age %v: got %q; want %q", tc.age, got, tc.want)
+		}
+	}
+}
+
+func TestDisplayAgeWarnings(t *testing.T) {
+	const now = 100000.0
+	fresh := report{Schema: schema, CheckedAt: now - 146}
+	if got := display(fresh, "prompt", "", now); got != "" {
+		t.Fatalf("clean prompt must stay silent: %q", got)
+	}
+	if got := display(fresh, "summary", "", now); !strings.Contains(got, "checked 2m ago") || strings.Count(got, "\n") != 1 {
+		t.Fatalf("clean summary must include its age on one line: %q", got)
+	}
+	for _, mode := range []string{"prompt", "summary"} {
+		old := report{Schema: schema, CheckedAt: now - 601}
+		if got := display(old, mode, "", now); !strings.Contains(got, "stale") || !strings.Contains(got, "checked 10m ago") {
+			t.Fatalf("stale report must include age and warning: %q", got)
+		}
+		future := report{Schema: schema, CheckedAt: now + 60}
+		if got := display(future, mode, "", now); !strings.Contains(got, "stale") || !strings.Contains(got, "check time in future") {
+			t.Fatalf("clock skew must not look fresh: %q", got)
+		}
+		if got := display(report{}, mode, "", now); !strings.Contains(got, "not checked yet") || strings.Contains(got, "ago") {
+			t.Fatalf("missing cache must not claim a check age: %q", got)
+		}
 	}
 }
 
