@@ -6,7 +6,7 @@ Local Git reminders for repositories managed by [Mani](https://manicli.com).
 Catch work left on this machine before moving to another one.
 
 ```text
- Local work: 3 repos · 1 stash · 2 branches without push targets   mani run repo-check
+ Local work: 3 repos · 1 stash · 2 branches without push targets · checked 2m ago   mani run repo-check
 ```
 
 The checker includes staged and unstaged changes, untracked files, stashes,
@@ -46,13 +46,14 @@ archive checksum. Release assets are named
 | `repo-health scan` | Collect local state from every Mani repository into the cache |
 | `repo-health inspect` | Check the current repository and its linked worktrees |
 | `repo-health prompt` | Read the cache and print a compact reminder; silent when clean |
-| `repo-health summary` | Read the cache and print counts and report age |
+| `repo-health summary` | Print cached counts and check age on one line |
 | `repo-health show` | Read the detailed cached report |
 | `repo-health version` | Print the version, commit and commit date |
 
 `MANI_CONFIG` defaults to `~/.config/mani/main.yaml`. The cache is
 `$XDG_CACHE_HOME/repo-health/status.json`, or `~/.cache/repo-health/status.json`.
-Missing, invalid or more-than-ten-minute-old reports remain visible.
+Visible prompts and summaries include the check age. Missing, invalid or
+more-than-ten-minute-old reports remain visible as warnings.
 `prompt --severity error` and `prompt --severity warning` support separate
 Starship modules if desired.
 

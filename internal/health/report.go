@@ -84,6 +84,23 @@ func number(count int, singular, plural string) string {
 
 func stale(checkedAt, now float64) bool { return now-checkedAt > localTTL || now < checkedAt }
 
+func checkAge(checkedAt, now float64) string {
+	if now < checkedAt {
+		return "check time in future"
+	}
+	seconds := int(now - checkedAt)
+	switch {
+	case seconds < 60:
+		return fmt.Sprintf("checked %ds ago", seconds)
+	case seconds < 3600:
+		return fmt.Sprintf("checked %dm ago", seconds/60)
+	case seconds < 86400:
+		return fmt.Sprintf("checked %dh ago", seconds/3600)
+	default:
+		return fmt.Sprintf("checked %dd ago", seconds/86400)
+	}
+}
+
 func issues(repo repository, now float64) []string {
 	problems := slices.Clone(repo.Errors)
 	if stale(repo.CheckedAt, now) {
@@ -217,7 +234,11 @@ func display(data report, mode, severity string, now float64) string {
 	}
 	var pieces []string
 	if dirty > 0 {
-		pieces = append(pieces, "Local work: "+number(dirty, "repo", ""))
+		label := number(dirty, "repo", "")
+		if mode != "summary" {
+			label = "Local work: " + label
+		}
+		pieces = append(pieces, label)
 	}
 	if stashes > 0 {
 		pieces = append(pieces, number(stashes, "stash", "stashes"))
@@ -238,6 +259,12 @@ func display(data report, mode, severity string, now float64) string {
 		}
 		pieces = append(pieces, "Check needed: "+message)
 	}
+	if len(pieces) == 0 && mode != "prompt" {
+		pieces = append(pieces, number(len(data.Repos), "repo checked", "repos checked")+"; no outstanding work")
+	}
+	if data.Schema == schema && data.CheckedAt > 0 {
+		pieces = append(pieces, checkAge(data.CheckedAt, now))
+	}
 	if mode == "prompt" {
 		if level == "ok" {
 			return ""
@@ -245,10 +272,7 @@ func display(data report, mode, severity string, now float64) string {
 		return " " + strings.Join(pieces, " · ") + "   mani run repo-check\n"
 	}
 	var out strings.Builder
-	fmt.Fprintln(&out, cmp.Or(strings.Join(pieces, " · "), number(len(data.Repos), "repo checked", "repos checked")+"; no outstanding work"))
-	if data.CheckedAt != 0 {
-		fmt.Fprintf(&out, "Local report: %ds ago\n", max(0, int(now-data.CheckedAt)))
-	}
+	fmt.Fprintln(&out, strings.Join(pieces, " · "))
 	if mode == "show" {
 		for _, problem := range data.Errors {
 			fmt.Fprintln(&out, "Check needed: "+safe(problem))
