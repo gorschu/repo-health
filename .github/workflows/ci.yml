@@ -19,48 +19,36 @@ jobs:
     name: Test and validate release
     runs-on: ubuntu-26.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Identify documentation-only pull requests
+      - name: Identify changes requiring validation
+        if: github.event_name == 'pull_request'
         id: changes
-        shell: bash
-        env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
-            echo "docs_only=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          : "${PR_BASE_SHA:?Missing pull request base SHA}" "${PR_HEAD_SHA:?Missing pull request head SHA}"
-          files=$(mktemp)
-          trap 'rm -f "$files"' EXIT
-          git diff --name-only --no-renames -z "$PR_BASE_SHA...$PR_HEAD_SHA" -- > "$files"
-          docs_only=true
-          while IFS= read -r -d '' path; do
-            case "$path" in
-              cmd/*|internal/*) docs_only=false; break ;;
-              *.md) ;;
-              *) docs_only=false; break ;;
-            esac
-          done < "$files"
-          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            build:
+              - '!**/*.md'
+              - 'cmd/**'
+              - 'internal/**'
       - name: Skip checks for documentation-only changes
-        if: steps.changes.outputs.docs_only == 'true'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.build == 'false'
         run: echo 'Documentation-only PR; tests and release builds are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - name: Install tools from .mise.toml
-        if: steps.changes.outputs.docs_only != 'true'
+        if: github.event_name != 'pull_request' || steps.changes.outputs.build != 'false'
         uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
       - name: Run formatting, lint and native Go tests
-        if: steps.changes.outputs.docs_only != 'true'
+        if: github.event_name != 'pull_request' || steps.changes.outputs.build != 'false'
         run: task check
       - name: Build snapshot archives without publishing
-        if: steps.changes.outputs.docs_only != 'true'
+        if: github.event_name != 'pull_request' || steps.changes.outputs.build != 'false'
         run: task release:snapshot
 
   release:
