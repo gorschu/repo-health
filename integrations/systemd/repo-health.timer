@@ -1,0 +1,10 @@
+[Unit]
+Description=Check repository health every three minutes
+
+[Timer]
+OnStartupSec=30s
+OnUnitInactiveSec=3min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

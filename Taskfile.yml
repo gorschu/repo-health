@@ -1,0 +1,61 @@
+version: '3'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  build:
+    desc: Build the local executable
+    env:
+      CGO_ENABLED: '0'
+    cmds:
+      - go build -trimpath -mod=readonly -ldflags='-s -w' -o bin/repo-health ./cmd/repo-health
+
+  fmt:
+    desc: Format Go source
+    cmds:
+      - gofmt -w cmd internal
+
+  fmt:check:
+    desc: Check Go formatting
+    cmds:
+      - |
+        files=$(gofmt -l cmd internal)
+        if [ -n "$files" ]; then
+          printf 'Run task fmt for:\n%s\n' "$files"
+          exit 1
+        fi
+
+  lint:
+    desc: Vet Go code and lint GitHub Actions
+    cmds:
+      - go vet ./...
+      - jactionlint --shellcheck= .github/workflows/ci.yml
+
+  test:
+    desc: Run native Git integration tests with the race detector
+    preconditions:
+      - sh: command -v git && command -v cc && command -v mani
+        msg: Git, a C compiler and Mani must be available for integration tests.
+    cmds:
+      - go test -race -count=1 ./...
+
+  check:
+    desc: Run all source and test checks
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: test
+
+  release:check:
+    desc: Validate the GoReleaser configuration
+    cmds:
+      - goreleaser check
+
+  release:snapshot:
+    desc: Build release archives locally without publishing
+    cmds:
+      - task: release:check
+      - goreleaser release --snapshot --clean --skip=publish

@@ -1,0 +1,9 @@
+# Merge this custom module into your Starship configuration and put
+# ${custom.repo_health} before $all in your existing top-level format.
+[custom.repo_health]
+description = "Outstanding local work in Mani repositories"
+command = '"$HOME/.local/bin/repo-health" prompt 2>/dev/null || printf "Repo check failed"'
+when = true
+shell = ["/bin/sh"]
+format = "([$output]($style)\n)"
+style = "#a6adc8"
