@@ -17,7 +17,7 @@ concurrency:
 jobs:
   test:
     name: Test and validate release
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - name: Check out source
@@ -36,7 +36,7 @@ jobs:
     name: Publish release
     needs: test
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: write
