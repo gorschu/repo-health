@@ -116,8 +116,11 @@ git push origin v0.1.0
 ```
 
 CI runs formatting, vet, workflow lint and race tests, validates GoReleaser,
-and builds snapshot archives. A version-tag push publishes only after that same
-commit passes validation. Pull requests and ordinary branch pushes do not publish.
+and builds snapshot archives. Pull requests that change only Markdown files skip
+these steps, unless the files are under `cmd/` or `internal/`. Pushes to `main`,
+version tags and manual runs always run all checks.
+
+Version-tag pushes publish after validation succeeds. Pull requests and ordinary branch pushes do not publish.
 Actions are pinned to full commit hashes, checkout credentials are not persisted,
 and only the release job receives `contents: write`. The GoReleaser action uses
 the version installed from `.mise.toml`.
@@ -126,6 +129,3 @@ the version installed from `.mise.toml`.
 versions, Go module dependencies and pinned GitHub Actions. Minor and patch
 updates are grouped by dependency type; major upgrades remain separate for
 review. CI checks update pull requests; updates are not automatically merged.
-
-The Go implementation follows the version-specific
-[JetBrains Modern Go Guidelines](https://github.com/JetBrains/go-modern-guidelines).
